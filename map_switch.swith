@@ -17,12 +17,12 @@ class createmaping(object):
         rospy.init_node('makemap')
         self.__init__rviz()
         self.raw_control(0,0)
-        #rospy.sleep(1)
+        rospy.sleep(1)
         sub = rospy.Subscriber('/raspimouse/lightsensors', LightSensorValues, self.lightsensor_callback, queue_size = 10)
         sub2 = rospy.Subscriber('/raspimouse/switches', Switches, self.switch_callback, queue_size = 10)
         self.sensor = [0,0,0,0]
         self.switch = [0,0,0]
-        #rospy.sleep(1)
+        rospy.sleep(1)
         rospy.loginfo("start")
 
     def lightsensor_callback(self, msg, val = 800): #vel change to map
@@ -61,8 +61,8 @@ class createmaping(object):
             self.raw_control(p,-p)
             time.sleep(round(t,1))
         elif(rl < rorl):
-            self.aw_control(-p,p)
-            timself.sleep(round(t,1))
+            self.raw_control(-p,p)
+            time.sleep(round(t,1))
         else: print "#u#kin R or L please!!"
 
     def stop_motor(self):
@@ -81,16 +81,36 @@ class createmaping(object):
         #print type
         return type
 
-    def run(self): #main
-        self.__init__rviz()
-        #while not rospy.is_shutdown():
-        for i in range (0,15,3):
-            self.rviz(self.recognition(),i)
-            self.oneframe(400,9)
-            self.raw_control(0,0)
-            time.sleep(0.5)
-            #Jself.recognition()
-            #pass
+    def run(self, deg=0,x=0,y=0): #main
+        while not rospy.is_shutdown():
+            if self.switch[0]: #straiht
+                self.oneframe(400,9)
+                self.raw_control(0,0)
+                time.sleep(0.5)
+                ##error
+                if deg+90 < 0: deg = 270
+                if deg+90 == 0:x+=3
+                elif deg+90 == 90:y+=3
+                elif deg+90 == 180:x-=3
+                elif deg+90 == 270:y-=3
+                if x < 0:x = 0
+                if x > 15: x = 15
+                if y < 0:y = 0
+                if y > 15:y = 15
+                #error
+                self.rviz(self.recognition(),y,x,90+deg) #y,x,deg
+
+            elif self.switch[1]:
+                self.turn(300, 90, -1)
+                self.raw_control(0,0)
+                time.sleep(0.5)
+                deg -= 90
+
+            elif self.switch[2]:
+                self.turn(300, 90, 1)
+                self.raw_control(0,0)
+                time.sleep(0.5)
+                deg += 90
 
     def __init__rviz(self):#rviz__init__
         self.pub5 = rospy.Publisher('raspi_mouce', OccupancyGrid, queue_size=10)
@@ -117,7 +137,7 @@ class createmaping(object):
         self.info.origin = self.pose
         self.map_data()
 
-    def map_data(self): #If you want change map scale you shoud be cheange this map_data and __init__rviz of height and width and resolution
+    def map_data(self): #If you want change map scale, you shoud be cheange this map_data and __init__rviz of height and width and resolution
         self.array = np.array([[0 for i in range(15)]for j in range(15)]) # 15*15 map
         self.map_data = [0 for i in range(8)]
         self.map_data[0] = [[  0,  0,  0] ,[  0,  0,  0]
@@ -159,37 +179,32 @@ class createmaping(object):
                 for y in range(2,-1,-1):
                     xy[y][x] = a[count]
                     count += 1
-        if deg == 90:
+        elif deg == 90:
             for y in range(3):
                 for x in range(3):
                     xy[y][x] = a[count]
                     count += 1
-        if deg == 180:
+        elif deg == 180:
             for x in range(2,-1,-1):
                 for y in range(3):
                     xy[y][x] = a[count]
                     count += 1
-        if deg == 270:
+        elif deg == 270:
             for y in range(2,-1,-1):
                 for x in range(2,-1,-1):
                     xy[y][x] = a[count]
                     count += 1
-        print self.map_data[type]
-        print xy
-                
+        return xy
 
-    def rviz(self, type = 0, i = 0):
+    def rviz(self, type = 0, i = 0,j = 0, deg = 90):
         self.header.seq += 1
         self.header.stamp = rospy.Time.now()
         self.info.map_load_time = rospy.Time.now()
         self.bar.info = self.info
-        self.array[i:i+3,0:3] = self.map_data[type]
+        self.array[i:i+3,j:j+3] = self.inversion_matrix(type, deg) #deg
         self.bar.data = list(itertools.chain(*self.array))
         self.pub5.publish(self.bar)
 
 if __name__ == '__main__':
     create = createmaping()
-    create.inversion_matrix()
-    #create.run()
-    #create.turn(300, 90, -1)
-    #Jturn(300 90, -1) 
+    create.run()
