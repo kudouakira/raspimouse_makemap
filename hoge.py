@@ -3,6 +3,7 @@
 import sys, time
 import itertools
 import rospy
+import math
 import numpy as np
 from raspimouse_ros.srv import *
 from raspimouse_ros.msg import * 
@@ -14,13 +15,14 @@ from geometry_msgs.msg import Pose, Point, Quaternion
 class createmaping(object):
     def __init__(self):
         rospy.init_node('makemap')
+        self.__init__rviz()
         self.raw_control(0,0)
-        rospy.sleep(1)
+        #rospy.sleep(1)
         sub = rospy.Subscriber('/raspimouse/lightsensors', LightSensorValues, self.lightsensor_callback, queue_size = 10)
         sub2 = rospy.Subscriber('/raspimouse/switches', Switches, self.switch_callback, queue_size = 10)
         self.sensor = [0,0,0,0]
         self.switch = [0,0,0]
-        rospy.sleep(1)
+        #rospy.sleep(1)
         rospy.loginfo("start")
 
     def lightsensor_callback(self, msg, val = 800): #vel change to map
@@ -115,11 +117,10 @@ class createmaping(object):
         self.info.origin = self.pose
         self.map_data()
 
-    def map_data(self): #If you want change map scale you shoud be cheange this map_data
+    def map_data(self): #If you want change map scale you shoud be cheange this map_data and __init__rviz of height and width and resolution
         self.array = np.array([[0 for i in range(15)]for j in range(15)]) # 15*15 map
         self.map_data = [0 for i in range(8)]
-        self.map_data[0] = [[  0,  0,  0]
-                           ,[  0,  0,  0]
+        self.map_data[0] = [[  0,  0,  0] ,[  0,  0,  0]
                            ,[  0,  0,  0]]
 
         self.map_data[1] = [[100,  0,100]
@@ -150,6 +151,33 @@ class createmaping(object):
                             [  0,  0,  0],
                             [100,100,100]]
 
+    def inversion_matrix(self, type = 3, deg = 270,count = 0):
+        a = sum(self.map_data[type],[])
+        xy= [[0 for i in range(3)]for j in range(3)]
+        if deg == 0:
+            for x in range(3):
+                for y in range(2,-1,-1):
+                    xy[y][x] = a[count]
+                    count += 1
+        if deg == 90:
+            for y in range(3):
+                for x in range(3):
+                    xy[y][x] = a[count]
+                    count += 1
+        if deg == 180:
+            for x in range(2,-1,-1):
+                for y in range(3):
+                    xy[y][x] = a[count]
+                    count += 1
+        if deg == 270:
+            for y in range(2,-1,-1):
+                for x in range(2,-1,-1):
+                    xy[y][x] = a[count]
+                    count += 1
+        print self.map_data[type]
+        print xy
+                
+
     def rviz(self, type = 0, i = 0):
         self.header.seq += 1
         self.header.stamp = rospy.Time.now()
@@ -161,6 +189,7 @@ class createmaping(object):
 
 if __name__ == '__main__':
     create = createmaping()
-    create.run()
+    create.inversion_matrix()
+    #create.run()
     #create.turn(300, 90, -1)
     #Jturn(300 90, -1) 
