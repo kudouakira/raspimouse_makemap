@@ -22,6 +22,7 @@ class createmaping(object):
         self.sensor = [0,0,0,0]
         self.switch = [0,0,0]
         rospy.sleep(1)
+        rospy.loginfo("start")
 
     def lightsensor_callback(self, msg, val = 800): #vel change to map
         if msg.right_forward > val: self.sensor[2] = True
