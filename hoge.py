@@ -18,7 +18,9 @@ class createmaping(object):
         self.raw_control(0,0)
         rospy.sleep(1)
         sub = rospy.Subscriber('/raspimouse/lightsensors', LightSensorValues, self.lightsensor_callback, queue_size = 10)
+        sub2 = rospy.Subscriber('/raspimouse/switches', Switches, self.switch_callback, queue_size = 10)
         self.sensor = [0,0,0,0]
+        self.switch = [0,0,0]
         rospy.sleep(1)
 
     def lightsensor_callback(self, msg, val = 800): #vel change to map
@@ -32,6 +34,11 @@ class createmaping(object):
         else : self.sensor[0] = False
         #print self.sensor
 
+    def switch_callback(self, msg, val = 800): #vel change to map
+        self.switch[0] = msg.front
+        self.switch[1] = msg.center
+        self.switch[2] = msg.rear
+        print self.switch
     def raw_control(self,left_hz,right_hz):
         #What this here 
         self.pub2 = rospy.Publisher('/raspimouse/motor_raw', LeftRightFreq, queue_size=10)
