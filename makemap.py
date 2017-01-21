@@ -12,10 +12,10 @@ ideal_r= #ideal value for right walls
 ideal_l= #ideal value for left walls
 
 def raw_control(left_hz,right_hz):
-    pub = rospy.Publisher('/motor_raw', MotorFreqs, queue_size=10)
+    pub = rospy.Publisher('/raspimouse/motor_raw', RightLeftFreq, queue_size=10)
 
     if not rospy.is_shutdown():
-        d = MotorFreqs()
+        d = RightLeftFreq()
         d.left = left_hz
         d.right = right_hz
         pub.publish(d)
@@ -62,12 +62,13 @@ def wall_trace_right(ls):
     E=P*(ls.right_side - ideal_r)
     raw_control(Base - E, Base + E)
 
-def wall_trace(ls)
+def wall_trace(ls):
     E=P*(ls.left_side - ideal_l + ls.right_side - ideal_r)
+
 
 if __name__ == '__main__':
     rospy.init_node('makemap')
-    sub = rospy.Subscriber('/lightsensors', LightSensorValues, lightsensor_callback)
+    sub = rospy.Subscriber('/raspimouse/lightsensors', LightSensorValues, lightsensor_callback)
     raw_control(0,0)
     time.sleep(0.5)
 #    oneframe(400)
