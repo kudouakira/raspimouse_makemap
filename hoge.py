@@ -16,9 +16,10 @@ class createmaping(object):
     def __init__(self):
         rospy.init_node('makemap')
         self.raw_control(0,0)
-        rospy.sleep(0.5)
-        sub = rospy.Subscriber('/raspimouse/lightsensors', LightSensorValues, self.lightsensor_callback)
+        rospy.sleep(1)
+        sub = rospy.Subscriber('/raspimouse/lightsensors', LightSensorValues, self.lightsensor_callback, queue_size = 10)
         self.sensor = [0,0,0,0]
+        rospy.sleep(1)
 
     def lightsensor_callback(self, msg, val = 800): #vel change to map
         if msg.right_forward > val: self.sensor[2] = True
@@ -75,10 +76,12 @@ class createmaping(object):
 
     def run(self):
         self.__init__rviz()
-        while not rospy.is_shutdown():
-            self.rviz(self.recognition())
-        #self.oneframe(400,18)
-        #create.raw_control(0,0)
+        #while not rospy.is_shutdown():
+        for i in range (0,15,3):
+            self.rviz(self.recognition(),i)
+            self.oneframe(400,9)
+            self.raw_control(0,0)
+            time.sleep(0.5)
         
         #Jwhile not rospy.is_shutdown():
             #Jself.recognition()
@@ -126,13 +129,13 @@ class createmaping(object):
         self.info.origin = self.pose
 
         self.bar.info = self.info
-        if type ==0: self.array[0:3,0:3] = self.map_0
-        if type ==1: self.array[0:3,0:3] = self.map_1
-        if type ==2: self.array[0:3,0:3] = self.map_2
-        if type ==3: self.array[0:3,0:3] = self.map_3
-        if type ==4: self.array[0:3,0:3] = self.map_4
-        if type ==5: self.array[0:3,0:3] = self.map_5
-        if type ==6: self.array[0:3,0:3] = self.map_6
+        if type ==0: self.array[i:i+3,0:3] = self.map_0
+        if type ==1: self.array[i:i+3,0:3] = self.map_1
+        if type ==2: self.array[i:i+3,0:3] = self.map_2
+        if type ==3: self.array[i:i+3,0:3] = self.map_3
+        if type ==4: self.array[i:i+3,0:3] = self.map_4
+        if type ==5: self.array[i:i+3,0:3] = self.map_5
+        if type ==6: self.array[i:i+3,0:3] = self.map_6
         self.bar.data = list(itertools.chain(*self.array))
         self.pub5.publish(self.bar)
 
