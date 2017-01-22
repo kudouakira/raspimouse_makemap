@@ -44,15 +44,9 @@ def turn(p, deg, rorl): #rorl = -1(right) or 1(left)
     else:
         print "#u#kin R or L please!!"
 
-
 def stop_motor():
     raw_control(0,0)
     switch_motors(Fales)
-
-def wall_trace(ls):
-    E=P*(ls.left_side - ideal + ls.right_side - ideal)/2
-    if(ls.left_side < ):
-        wall_trace_right(ls,ideal)
 
 def wall_trace_left(ls):
     E=P*(ls.left_side - ideal_l)
@@ -63,7 +57,13 @@ def wall_trace_right(ls):
     raw_control(Base - E, Base + E)
 
 def wall_trace(ls):
-    E=P*(ls.left_side - ideal_l + ls.right_side - ideal_r)
+    E=P*(ls.left_side - ideal_l + ls.right_side - ideal_r)/2
+    if(ls.left_side < ls.right_side):
+        wall_trace_right(ls)
+    elif(ls.right_side < ls.left_side):
+        wall_trace_left(ls)
+    else:
+        raw_control(Base)
 
 
 if __name__ == '__main__':
