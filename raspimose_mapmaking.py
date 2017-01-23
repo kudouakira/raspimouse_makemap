@@ -48,10 +48,10 @@ class createmaping(object):
         else : self.sensor[0] = False
         #print self.sensor
 
-    def switch_callback(self, msg): 
-        self.switch[0] = msg.front
-        self.switch[1] = msg.center
-        self.switch[2] = msg.rear
+#    def switch_callback(self, msg): 
+#        self.switch[0] = msg.front
+#        self.switch[1] = msg.center
+#        self.switch[2] = msg.rear
         #print self.switch
 
     def raw_control(self,left_hz,right_hz):
@@ -67,6 +67,7 @@ class createmaping(object):
         #self.raw_control(p,p)
         #time.sleep(round(t,1))
 
+    L=-1, R=1
     def turn(self,p, deg, rorl, r=2.4, a=5.0, rl=0): #rorl = -1(right) or 1(left)
         t2=(deg*400*a)/(360*r*p)
         if(rl > rorl):
@@ -112,11 +113,11 @@ class createmaping(object):
                 count += 0.1
 
     def search_rout(self):
-        self.turn(self.p,90,-1)
+        self.turn(self.p,90,L)
         deg -= 90
         if (self.left_forward + self.right_forward)*0.5 < 1000:
             self.wall_trace()
-        self.turn(self.p,180,1)
+        self.turn(self.p,180,R)
         deg += 180
         if (self.left_forward + self.right_forward)*0.5 < 1000:
             self.wall_trace()
