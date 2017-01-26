@@ -11,7 +11,6 @@ from std_msgs.msg import UInt16
 from std_msgs.msg import Header
 from nav_msgs.msg import MapMetaData, OccupancyGrid
 from geometry_msgs.msg import Pose, Point, Quaternion
-
 class createmaping(object):
     def __init__(self):
         rospy.init_node('makemap')
@@ -25,16 +24,19 @@ class createmaping(object):
         rospy.sleep(1)
         rospy.loginfo("start")
 
-    def lightsensor_callback(self, msg, val = 800): #vel change to map
-        if msg.right_forward > val: self.sensor[2] = True
+    def lightsensor_callback(self, msg): #change to map
+        if msg.right_forward > 700: self.sensor[2] = True
         else : self.sensor[2] = False
-        if msg.right_side > val: self.sensor[3] = True
+        if msg.right_side > 500: self.sensor[3] = True
         else : self.sensor[3] = False
-        if msg.left_forward > val: self.sensor[1] = True
+        if msg.left_forward > 700: self.sensor[1] = True
         else : self.sensor[1] = False
-        if msg.left_side > val: self.sensor[0] = True
+        if msg.left_side > 500: self.sensor[0] = True
         else : self.sensor[0] = False
         #print self.sensor
+
+        self.left_side = msg.left_side
+        self.right_side = msg.right_side
 
     def switch_callback(self, msg): 
         self.switch[0] = msg.front
@@ -50,12 +52,23 @@ class createmaping(object):
         L.right = right_hz
         self.pub2.publish(L)
         
-    def oneframe(self,p,dis, r = 2.4):
+    def oneframe(self,p,dis, r = 2.4,val = 0,t = 0):
         t=(400*dis)/(2*3.14*r*p) #one frame 18cm
-        self.raw_control(p,p)
-        time.sleep(round(t,1))
+        Val = round(t,1)*10
+#        if self.left_side > self.right_side:
+        for val in range(int(Val)):
+                E=0.2*(self.left_side - 900)
+                self.raw_control(p+E,p-E)
+                time.sleep(0.1)
+                val += 1
+ #       elif self.left_side < self.right_side:
+ #           for val in range(int(Val)):
+ #               E=0.3*(self.right_side - 900)
+ #               self.raw_control(p-E,p+E)
+ #               time.sleep(0.1)
+ #               val += 1
 
-    def turn(self,p, deg, rorl, r=2.4, a=5.0, rl=0): #rorl = -1(right) or 1(left)
+    def turn(self,p, deg, rorl, r=2.4, a=4.8, rl=0): #rorl = -1(right) or 1(left)
         t=(deg*400*a)/(360*r*p)
         if(rl > rorl):
             self.raw_control(p,-p)
@@ -69,36 +82,50 @@ class createmaping(object):
         self.raw_control(0,0)
         switch_motors(Fales)
 
-    def recognition(self, type = 0):
-        if self.sensor[0] and self.sensor[1] and self.sensor[2] and not self.sensor[3]: type = 1
-        elif not self.sensor[0] and self.sensor[1] and self.sensor[2] and self.sensor[3]: type = 2
-        elif self.sensor[0] and not self.sensor[1] and not self.sensor[2] and self.sensor[3]: type = 3
-        elif self.sensor[0] and self.sensor[1] and self.sensor[2] and self.sensor[3]: type = 4
-        elif self.sensor[0] and not self.sensor[1] and not self.sensor[2] and not self.sensor[3]: type = 5
-        elif not self.sensor[0] and not self.sensor[1] and not self.sensor[2] and self.sensor[3]: type = 6
-        elif not self.sensor[0] and self.sensor[1] and self.sensor[2] and not self.sensor[3]: type = 7
+    def recognition(self, a=True, b=True, type = 0):
+        if a and self.sensor[1] and self.sensor[2] and not b: type = 1
+        elif not a and self.sensor[1] and self.sensor[2] and b: type = 2
+        elif a and not self.sensor[1] and not self.sensor[2] and b: type = 3
+        elif a and self.sensor[1] and self.sensor[2] and b: type = 4
+        elif a and not self.sensor[1] and not self.sensor[2] and not b: type = 5
+        elif not a and not self.sensor[1] and not self.sensor[2] and b: type = 6
+        elif not a and self.sensor[1] and self.sensor[2] and not b: type = 7
         else : print "nothing"
         #print type
         return type
 
     def run(self, deg=0,x=0,y=0): #main
+        self.rviz(self.recognition(),y,x,90+deg) #y,x,deg
         while not rospy.is_shutdown():
+            self.pub5.publish(self.bar)
             if self.switch[0]: #straiht
-                self.oneframe(400,9)
+                if   deg == -90:  x+=18
+                elif deg == 0: y+=18
+                elif deg == 90:x-=18
+                elif deg == 180:y-=18
+                if x < 0:x = 0
+                if x > 72: x = 72
+                if y < 0:y = 0
+                if y > 72:y = 72
+                #error
+                a,b =  self.sensor[0],self.sensor[3] # naname
+                print a,b
+                self.oneframe(400,18)
                 self.raw_control(0,0)
                 time.sleep(0.5)
+                self.rviz(self.recognition(a,b),y,x,90+deg) #y,x,deg
                 ##error
-                if deg+90 < 0: deg = 270
-                if deg+90 == 0:x+=3
-                elif deg+90 == 90:y+=3
-                elif deg+90 == 180:x-=3
-                elif deg+90 == 270:y-=3
-                if x < 0:x = 0
-                if x > 15: x = 15
-                if y < 0:y = 0
-                if y > 15:y = 15
+                #if deg+90 < 0: deg = 270
+                #if deg+90 == 0:x+=3
+                #elif deg+90 == 90:y+=3
+                #elif deg+90 == 180:x-=3
+                #elif deg+90 == 270:y-=3
+                #if x < 0:x = 0
+                #if x > 15: x = 15
+                #if y < 0:y = 0
+                #if y > 15:y = 15
                 #error
-                self.rviz(self.recognition(),y,x,90+deg) #y,x,deg
+                #self.rviz(self.recognition(),y,x,90+deg) #y,x,deg
 
             elif self.switch[1]:
                 self.turn(300, 90, -1)
@@ -106,14 +133,16 @@ class createmaping(object):
                 time.sleep(0.5)
                 deg -= 90
 
+
             elif self.switch[2]:
                 self.turn(300, 90, 1)
                 self.raw_control(0,0)
                 time.sleep(0.5)
                 deg += 90
 
+
     def __init__rviz(self):#rviz__init__
-        self.pub5 = rospy.Publisher('raspi_mouce', OccupancyGrid, queue_size=10)
+        self.pub5 = rospy.Publisher('masaya', OccupancyGrid, queue_size=10)
         self.header = Header()
         self.pose = Pose()
         self.point = Point()
@@ -131,67 +160,171 @@ class createmaping(object):
         self.quaternion.w = 1.0
         self.pose.position = self.point
         self.pose.orientation = self.quaternion
-        self.info.width = 15
-        self.info.height = 15
-        self.info.resolution = 5
+        self.info.width = 72
+        self.info.height = 72
+        self.info.resolution = 0.1
         self.info.origin = self.pose
         self.map_data()
 
     def map_data(self): #If you want change map scale, you shoud be cheange this map_data and __init__rviz of height and width and resolution
-        self.array = np.array([[0 for i in range(15)]for j in range(15)]) # 15*15 map
-        self.map_data = [0 for i in range(8)]
-        self.map_data[0] = [[  0,  0,  0] ,[  0,  0,  0]
-                           ,[  0,  0,  0]]
+        self.array = np.array([[0 for i in range(72)]for j in range(72)]) # 15*15 map
+        self.map_data = np.array([np.empty((18, 18)) for i in range(9)])
+        self.map_data[1] = np.array([[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]])
 
-        self.map_data[1] = [[100,  0,100]
-                           ,[100,  0,  0]
-                           ,[100,100,100]]
+        self.map_data[2] = np.array([[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]])
 
-        self.map_data[2] = [[100,  0,100]
-                           ,[  0,  0,100]
-                           ,[100,100,100]]
+        self.map_data[3] = np.array([[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]])
 
-        self.map_data[3] = [[100,  0,100],
-                            [100,  0,100],
-                            [100,  0,100]]
+        self.map_data[4] = np.array([[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]])
 
-        self.map_data[4] = [[100,  0,100],
-                            [100,  0,100],
-                            [100,100,100]]
 
-        self.map_data[5] = [[100,  0,100],
-                            [100,  0,  0],
-                            [100,  0,100]]
+        self.map_data[5] = np.array([[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]])
 
-        self.map_data[6] = [[100,  0,100],
-                            [  0,  0,100],
-                            [100,  0,100]]
+        self.map_data[6] = np.array([[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]])
 
-        self.map_data[7] = [[100,  0,100],
-                            [  0,  0,  0],
-                            [100,100,100]]
+        self.map_data[7] = np.array([[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                                    ,[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]])
+
 
     def inversion_matrix(self, type = 3, deg = 270,count = 0):
-        a = sum(self.map_data[type],[])
-        xy= [[0 for i in range(3)]for j in range(3)]
+        a = list(itertools.chain(*self.map_data[type]))
+        xy= np.array([[0 for i in range(18)]for j in range(18)])
         if deg == 0:
-            for x in range(3):
-                for y in range(2,-1,-1):
+            for x in range(18):
+                for y in range(17,-1,-1):
                     xy[y][x] = a[count]
                     count += 1
         elif deg == 90:
-            for y in range(3):
-                for x in range(3):
+            for y in range(18):
+                for x in range(18):
                     xy[y][x] = a[count]
                     count += 1
         elif deg == 180:
-            for x in range(2,-1,-1):
-                for y in range(3):
+            for x in range(17,-1,-1):
+                for y in range(18):
                     xy[y][x] = a[count]
                     count += 1
         elif deg == 270:
-            for y in range(2,-1,-1):
-                for x in range(2,-1,-1):
+            for y in range(17,-1,-1):
+                for x in range(17,-1,-1):
                     xy[y][x] = a[count]
                     count += 1
         return xy
@@ -201,10 +334,11 @@ class createmaping(object):
         self.header.stamp = rospy.Time.now()
         self.info.map_load_time = rospy.Time.now()
         self.bar.info = self.info
-        self.array[i:i+3,j:j+3] = self.inversion_matrix(type, deg) #deg
+        self.array[i:i+18,j:j+18] = 50 * self.inversion_matrix(type, deg) #deg
         self.bar.data = list(itertools.chain(*self.array))
-        self.pub5.publish(self.bar)
 
 if __name__ == '__main__':
     create = createmaping()
+    create.raw_control(0,0)
+    time.sleep(0.5)
     create.run()
